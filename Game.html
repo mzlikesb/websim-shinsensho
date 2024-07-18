@@ -1,0 +1,777 @@
+<html>
+  <head><base href="https://gamedev.virtualdimensions.io" /><title>VirtualDimensions GameDev - Connect Match Deluxe</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background-color: #f0f8ff;
+        color: #333;
+      }
+      #app {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 600px;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      .game-container {
+        background-color: #ffffff;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .game-board {
+        display: grid;
+        gap: 8px;
+        background-color: #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+        position: relative;
+        aspect-ratio: 1 / 1;
+        touch-action: manipulation;
+      }
+      .tile {
+        background-color: #4a90e2;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        perspective: 1000px;
+        position: relative;
+        touch-action: manipulation;
+      }
+      .tile-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        transition: transform 0.6s, opacity 0.5s;
+        transform-style: preserve-3d;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 28px;
+      }
+      .tile.selected {
+        animation: pulse 1.5s infinite;
+      }
+      .tile.hint {
+        box-shadow: 0 0 0 3px #00ff00, 0 0 20px #00ff00;
+        animation: hintPulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+      }
+      @keyframes hintPulse {
+        0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
+      }
+      .tile.matched {
+        animation: matchedAnimation 0.5s forwards;
+      }
+      @keyframes matchedAnimation {
+        0% {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.2) rotate(180deg);
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(0) rotate(360deg);
+          opacity: 0;
+        }
+      }
+      h1 {
+        color: #4a90e2;
+        margin-bottom: 20px;
+        font-size: 2em;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+      }
+      .controls {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 20px;
+      }
+      button {
+        font-size: 16px;
+        padding: 10px 20px;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.1s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        touch-action: manipulation;
+      }
+      button:hover {
+        background-color: #3a80d2;
+        transform: translateY(-2px);
+      }
+      button:active {
+        transform: translateY(0);
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 20px;
+        font-size: 16px;
+        background-color: #f0f0f0;
+        padding: 10px;
+        border-radius: 8px;
+        box-sizing: border-box;
+      }
+      .stat {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+      }
+      .stat-icon {
+        margin-right: 5px;
+        font-size: 20px;
+      }
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        max-width: 80%;
+      }
+      .modal h2 {
+        margin-top: 0;
+        color: #4a90e2;
+      }
+      .modal p {
+        margin-bottom: 20px;
+      }
+      .score {
+        font-size: 24px;
+        font-weight: bold;
+        color: #4a90e2;
+        margin-bottom: 10px;
+      }
+      .bonus {
+        color: #ffd700;
+        font-weight: bold;
+        animation: bonusPulse 0.5s ease-in-out;
+      }
+      @keyframes bonusPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+      }
+      .sound-controls {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .sound-toggle {
+        font-size: 24px;
+        cursor: pointer;
+        margin-right: 10px;
+        touch-action: manipulation;
+      }
+      .volume-slider {
+        width: 80px;
+      }
+      .difficulty-select {
+        margin-bottom: 20px;
+        font-size: 16px;
+        width: 100%;
+        text-align: center;
+      }
+      .difficulty-select select {
+        font-size: 16px;
+        padding: 5px 10px;
+        border-radius: 5px;
+        border: 1px solid #4a90e2;
+      }
+      .timer-bar {
+        width: 100%;
+        height: 10px;
+        background-color: #e0e0e0;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+      .timer-progress {
+        height: 100%;
+        background-color: #4a90e2;
+        transition: width 1s linear;
+      }
+      .shuffle-animation {
+        animation: shuffle 0.5s ease-in-out;
+      }
+      @keyframes shuffle {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1) rotate(5deg); }
+      }
+      @media (max-width: 600px) {
+        .game-container {
+          padding: 10px;
+        }
+        .tile-inner {
+          font-size: 20px;
+        }
+        .stats {
+          font-size: 14px;
+        }
+        .sound-controls {
+          top: 10px;
+          right: 10px;
+        }
+        .volume-slider {
+          width: 60px;
+        }
+      }
+    </style>
+  </head>
+<body>
+<div id="app">
+  <h1>Connect Match Deluxe</h1>
+  <div class="difficulty-select">
+    <label for="difficulty">Difficulty: </label>
+    <select id="difficulty" v-model="difficulty" @change="resetGame">
+      <option value="easy">Easy</option>
+      <option value="medium">Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+  </div>
+  <div class="game-container">
+    <div class="game-board" :style="{ 
+      gridTemplateColumns: `repeat(${gridSize}, 1fr)`,
+      gridTemplateRows: `repeat(${gridSize}, 1fr)`
+    }"
+    @touchstart.prevent="">
+      <div v-for="(tile, index) in tiles" :key="index" 
+           class="tile" :class="{ selected: tile.selected, matched: tile.matched, hint: tile.hint, 'shuffle-animation': shuffling }"
+           @click="selectTile(index)"
+           @touchstart.prevent="selectTile(index)"
+           :style="{ visibility: tile.matched ? 'hidden' : 'visible' }">
+        <div class="tile-inner">
+          {{ tile.symbol }}
+        </div>
+      </div>
+    </div>
+    <div class="timer-bar">
+      <div class="timer-progress" :style="{ width: `${(timer / timeLimit) * 100}%` }"></div>
+    </div>
+    <div class="controls">
+      <button @click="resetGame" @touchstart.prevent="resetGame">New Game</button>
+      <button @click="useHint" @touchstart.prevent="useHint" :disabled="hintActive">Hint</button>
+      <button @click="shuffleTiles" @touchstart.prevent="shuffleTiles" :disabled="shuffling">Shuffle</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-icon">🕒</span>
+      <span>Time: {{ formatTime(timer) }} / {{ formatTime(timeLimit) }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-icon">🏆</span>
+      <span>Matches: {{ matches }} / {{ totalPairs }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-icon">💯</span>
+      <span>Score: {{ score }}</span>
+    </div>
+  </div>
+  <div v-if="showModal" class="modal">
+    <div class="modal-content">
+      <h2>{{ modalTitle }}</h2>
+      <p class="score">Final Score: {{ score }}</p>
+      <p>{{ modalMessage }}</p>
+      <button @click="resetGame" @touchstart.prevent="resetGame">New Game</button>
+    </div>
+  </div>
+  <div class="sound-controls">
+    <div class="sound-toggle" @click="toggleSound" @touchstart.prevent="toggleSound">
+      {{ soundOn ? '🔊' : '🔇' }}
+    </div>
+    <input type="range" min="0" max="1" step="0.1" v-model="volume" @input="adjustVolume" class="volume-slider">
+  </div>
+</div>
+
+<script src="https://unpkg.com/vue@3.2.31/dist/vue.global.prod.js"></script>
+<script>
+  const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
+
+  createApp({
+    setup() {
+      const symbols = [
+        '🐱', '🐯', '🐹', '🐭', '🐻', '🐼', '🐶', '🐰', '🐨', '🦊', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🦉', '🦄', '🐴', '🦓', '🐧', '🐦', '🐤', '🐣', '🦇', '🦋', '🐍', '🦖', '🐢', '🐠'
+      ];
+
+      const difficulty = ref('medium');
+      const tiles = ref([]);
+      const matches = ref(0);
+      const timer = ref(0);
+      const timerInterval = ref(null);
+      const hintActive = ref(false);
+      const showModal = ref(false);
+      const modalTitle = ref('');
+      const modalMessage = ref('');
+      const score = ref(0);
+      const consecutiveMatches = ref(0);
+      const lastMatchTime = ref(0);
+      const soundOn = ref(false);
+      const volume = ref(0.5);
+      const shuffling = ref(false);
+      let selectedTiles = [];
+
+      const gridSize = computed(() => {
+        switch (difficulty.value) {
+          case 'easy': return 6;
+          case 'medium': return 8;
+          case 'hard': return 10;
+        }
+      });
+
+      const totalPairs = computed(() => {
+        switch (difficulty.value) {
+          case 'easy': return 18;
+          case 'medium': return 32;
+          case 'hard': return 50;
+        }
+      });
+
+      const timeLimit = computed(() => {
+        switch (difficulty.value) {
+          case 'easy': return 180; // 3 minutes
+          case 'medium': return 300; // 5 minutes
+          case 'hard': return 420; // 7 minutes
+        }
+      });
+
+      // Audio elements
+      const tileSelectSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3');
+      const matchSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-magical-coin-win-1936.mp3');
+      const gameCompleteSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3');
+      const backgroundMusic = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-game-level-music-689.mp3');
+      const shuffleSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3');
+      backgroundMusic.loop = true;
+
+      const audioElements = [tileSelectSound, matchSound, gameCompleteSound, backgroundMusic, shuffleSound];
+
+      const shuffleArray = (array) => {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      };
+
+      const initializeTiles = () => {
+        const shuffledSymbols = [...symbols];
+        shuffleArray(shuffledSymbols);
+        const selectedSymbols = shuffledSymbols.slice(0, Math.min(totalPairs.value/2, symbols.length));
+        const tileSet = [];
+        for (let i = 0; i < totalPairs.value; i++) {
+          tileSet.push(selectedSymbols[i % selectedSymbols.length]);
+          tileSet.push(selectedSymbols[i % selectedSymbols.length]);
+        }
+        shuffleArray(tileSet);
+        tiles.value = tileSet.map((symbol, index) => ({
+          symbol,
+          matched: false,
+          selected: false,
+          hint: false,
+          x: index % gridSize.value,
+          y: Math.floor(index / gridSize.value)
+        }));
+      };
+
+      const startTimer = () => {
+        timerInterval.value = setInterval(() => {
+          timer.value++;
+          if (timer.value >= timeLimit.value) {
+            endGame(false);
+          }
+        }, 1000);
+      };
+
+      const stopTimer = () => {
+        clearInterval(timerInterval.value);
+      };
+
+      const formatTime = (time) => {
+        const minutes = Math.floor(time / 60);
+        const seconds = time % 60;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      };
+
+      const playSound = (sound) => {
+        if (soundOn.value) {
+          sound.currentTime = 0;
+          sound.play();
+        }
+      };
+
+      const selectTile = (index) => {
+        if(selectedTiles.length === 1 &&selectedTiles[0] === index) return;
+
+        if (tiles.value[index].matched || shuffling.value) return;
+        playSound(tileSelectSound);
+
+        // Deselect previously selected tile if it's not a match
+        if (selectedTiles.length === 1 && selectedTiles[0] !== index) {
+          tiles.value[selectedTiles[0]].selected = false;
+        }
+        
+        // Toggle selection of current tile
+        tiles.value[index].selected = !tiles.value[index].selected;
+
+
+        if (tiles.value[index].selected) {
+          selectedTiles.push(index);
+        } else {
+          selectedTiles = selectedTiles.filter(i => i !== index);
+        }
+
+        if (selectedTiles.length === 2) {
+          checkMatch();
+        }
+
+        // Clear hint when a tile is selected
+        clearHint();
+      };
+
+      const checkMatch = () => {
+        const [index1, index2] = selectedTiles;
+        const tile1 = tiles.value[index1];
+        const tile2 = tiles.value[index2];
+
+        if (tile1.symbol === tile2.symbol) {
+          const path = findPath(tile1, tile2);
+          if (path) {
+            tile1.matched = true;
+            tile2.matched = true;
+            matches.value++;
+            updateScore(true);
+            playSound(matchSound);
+            setTimeout(() => {
+              tile1.selected = false;
+              tile2.selected = false;
+              checkWinCondition();
+            }, 500);
+          } else {
+            setTimeout(() => {
+              tile1.selected = false;
+              tile2.selected = false;
+            }, 1000);
+            updateScore(false);
+          }
+        } else {
+          setTimeout(() => {
+            tile1.selected = false;
+            tile2.selected = false;
+          }, 1000);
+          updateScore(false);
+        }
+
+        selectedTiles = [];
+        setTimeout(() => {
+          if (!checkForPossibleMoves()) {
+            shuffleTiles();
+          }
+        }, 1000);
+      };
+
+      const findPath = (start, end) => {
+        const directions = [
+          { dx: 1, dy: 0 },  // right
+          { dx: -1, dy: 0 }, // left
+          { dx: 0, dy: 1 },  // down
+          { dx: 0, dy: -1 }  // up
+        ];
+
+        const isValidMove = (x, y) => {
+          return x >= 0 && x < gridSize.value && y >= 0 && y < gridSize.value &&
+                 (tiles.value[y * gridSize.value + x].matched ||
+                  (x === end.x && y === end.y) ||
+                  (x === start.x && y === start.y));
+        };
+
+        const findPathWithTurns = (x, y, prevDirection, turnsLeft, path) => {
+          if (!isValidMove(x, y)) return null;
+          if (x === end.x && y === end.y) return path;
+
+          for (const direction of directions) {
+            // Check if we're changing direction
+            const isTurn = prevDirection && (direction.dx !== prevDirection.dx || direction.dy !== prevDirection.dy);
+            if (isTurn && turnsLeft === 0) continue;
+
+            const newX = x + direction.dx;
+            const newY = y + direction.dy;
+            const newPath = [...path, {x: newX, y: newY}];
+            const newTurnsLeft = isTurn ? turnsLeft - 1 : turnsLeft;
+
+            const result = findPathWithTurns(newX, newY, direction, newTurnsLeft, newPath);
+            if (result) return result;
+          }
+
+          return null;
+        };
+
+        // Try paths with 0, 1, and 2 turns
+        for (let turns = 0; turns <= 2; turns++) {
+          const path = findPathWithTurns(start.x, start.y, null, turns, [{x: start.x, y: start.y}]);
+          if (path) return path;
+        }
+
+        return null;
+      };
+
+      const resetGame = () => {
+        stopTimer();
+        initializeTiles();
+        matches.value = 0;
+        timer.value = 0;
+        selectedTiles = [];
+        hintActive.value = false;
+        showModal.value = false;
+        score.value = 0;
+        consecutiveMatches.value = 0;
+        lastMatchTime.value = 0;
+        startTimer();
+        if (soundOn.value) {
+          backgroundMusic.currentTime = 0;
+          backgroundMusic.play();
+        }
+      };
+
+      const useHint = () => {
+        if (hintActive.value) return;
+        
+        for (let i = 0; i < tiles.value.length; i++) {
+          for (let j = i + 1; j < tiles.value.length; j++) {
+            const tile1 = tiles.value[i];
+            const tile2 = tiles.value[j];
+            if (!tile1.matched && !tile2.matched && tile1.symbol === tile2.symbol) {
+              const path = findPath(tile1, tile2);
+              if (path) {
+                tile1.hint = true;
+                tile2.hint = true;
+                hintActive.value = true;
+                score.value -= 50; // Penalty for using hint
+                setTimeout(clearHint, 3000);
+                return;
+              }
+            }
+          }
+        }
+      };
+
+      const clearHint = () => {
+        tiles.value.forEach(tile => tile.hint = false);
+        hintActive.value = false;
+      };
+
+      const checkWinCondition = () => {
+        if (matches.value === totalPairs.value) {
+          endGame(true);
+        }
+      };
+
+      const checkForPossibleMoves = () => {
+        for (let i = 0; i < tiles.value.length; i++) {
+          for (let j = i + 1; j < tiles.value.length; j++) {
+            const tile1 = tiles.value[i];
+            const tile2 = tiles.value[j];
+            if (!tile1.matched && !tile2.matched && tile1.symbol === tile2.symbol) {
+              const path = findPath(tile1, tile2);
+              if (path) {
+                return true; // There's still a valid move
+              }
+            }
+          }
+        }
+        return false; // No valid moves left
+      };
+
+      const shuffleTiles = () => {
+        if (shuffling.value) return;
+        shuffling.value = true;
+        playSound(shuffleSound);
+
+        // Get all unmatched tiles
+        const unmatchedTiles = tiles.value.filter(tile => !tile.matched);
+        
+        // Shuffle the unmatched tiles
+        shuffleArray(unmatchedTiles);
+
+        // Reassign the shuffled tiles to their new positions
+        let unmatchedIndex = 0;
+        for (let i = 0; i < tiles.value.length; i++) {
+          if (!tiles.value[i].matched) {
+            tiles.value[i] = { ...unmatchedTiles[unmatchedIndex], x: i % gridSize.value, y: Math.floor(i / gridSize.value) };
+            unmatchedIndex++;
+          }
+        }
+
+        setTimeout(() => {
+          shuffling.value = false;
+        }, 500); // Match the duration of the shuffle animation
+      };
+
+      const endGame = (isWin) => {
+        stopTimer();
+        if (isWin) {
+          const timeBonus = Math.max(0, timeLimit.value - timer.value) * 10;
+          score.value += timeBonus;
+          modalTitle.value = 'Congratulations!';
+          modalMessage.value = `You've completed the game in ${formatTime(timer.value)}!\nTime Bonus: ${timeBonus}`;
+        } else {
+          modalTitle.value = 'Game Over';
+          modalMessage.value = `Time's up or no more moves available. You've made ${matches.value} matches in ${formatTime(timer.value)}.`;
+        }
+        showModal.value = true;
+        playSound(gameCompleteSound);
+        backgroundMusic.pause();
+      };
+
+      const updateScore = (isMatch) => {
+        const baseScore = 100;
+        const timePenalty = Math.floor(timer.value / 10);
+
+        if (isMatch) {
+          let matchScore = baseScore - timePenalty;
+          
+          // Bonus for consecutive matches
+          if (timer.value - lastMatchTime.value <= 5) {
+            consecutiveMatches.value++;
+            matchScore += consecutiveMatches.value * 50;
+          } else {
+            consecutiveMatches.value = 0;
+          }
+          
+          // Bonus for quick matches
+          const timeBonus = Math.max(0, 100 - (timer.value - lastMatchTime.value) * 10);
+          matchScore += timeBonus;
+
+          score.value += matchScore;
+          lastMatchTime.value = timer.value;
+        } else {
+          score.value -= 20; // Penalty for wrong match
+          consecutiveMatches.value = 0;
+        }
+
+        // Ensure score doesn't go below 0
+        score.value = Math.max(0, score.value);
+      };
+
+      const toggleSound = () => {
+        soundOn.value = !soundOn.value;
+        if (soundOn.value) {
+          backgroundMusic.play();
+        } else {
+          backgroundMusic.pause();
+        }
+      };
+
+      const adjustVolume = () => {
+        audioElements.forEach(audio => {
+          audio.volume = volume.value;
+        });
+      };
+
+      watch(volume, adjustVolume);
+
+      onMounted(() => {
+        initializeTiles();
+        startTimer();
+        if (soundOn.value) {
+          backgroundMusic.play();
+        }
+        adjustVolume();
+
+        // Prevent zooming on mobile devices
+        document.addEventListener('touchmove', function(event) {
+          if (event.scale !== 1) {
+            event.preventDefault();
+          }
+        }, { passive: false });
+
+        // Disable double-tap to zoom
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+          const now = (new Date()).getTime();
+          if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+          }
+          lastTouchEnd = now;
+        }, false);
+      });
+
+      onUnmounted(() => {
+        stopTimer();
+        backgroundMusic.pause();
+      });
+
+      return {
+        tiles,
+        selectTile,
+        resetGame,
+        useHint,
+        matches,
+        timer,
+        formatTime,
+        hintActive,
+        showModal,
+        modalTitle,
+        modalMessage,
+        score,
+        soundOn,
+        toggleSound,
+        volume,
+        adjustVolume,
+        difficulty,
+        gridSize,
+        totalPairs,
+        timeLimit,
+        shuffleTiles,
+        shuffling
+      };
+    }
+  }).mount('#app');
+</script>
+</body></html>
